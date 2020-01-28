@@ -1,3 +1,7 @@
+import net.grinder.scriptengine.groovy.junit.annotation.AfterProcess
+import net.grinder.scriptengine.groovy.junit.annotation.AfterThread
+import org.junit.After
+
 import static net.grinder.script.Grinder.grinder
 import static org.junit.Assert.*
 import static org.hamcrest.Matchers.*
@@ -50,7 +54,7 @@ class TestRunner {
 
 	@BeforeProcess
 	public static void beforeProcess() {
-
+		// 加载资源文件、初始化 GTest 等
 		def idlistFile = new File("key1.list")
 		idlistFile.eachLine {
 			keyList_1.push(it)
@@ -74,6 +78,7 @@ class TestRunner {
 
 	@BeforeThread
 	public void beforeThread() {
+		// 登录、设置 cookie 之类
 		println "beforeThread"
 
 		grinder.statistics.delayReports=true
@@ -108,4 +113,22 @@ class TestRunner {
 //		def id = keyList_2[random.nextInt(keyList_2_size)]
 //		println id
 //	}
+
+
+	@After  // 在每个 @Test 注解的方法执行后执行
+	public void after() {
+		// 很少用到
+	}
+
+	@AfterThread
+	public void afterThread() {
+		// 登出之类
+	}
+
+	@AfterProcess  // 在每个进程结束后执行
+	public static void afterProcess() {
+		// 关闭资源
+	}
+
+
 }

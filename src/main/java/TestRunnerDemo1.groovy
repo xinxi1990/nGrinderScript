@@ -1,28 +1,26 @@
-import groovy.json.JsonSlurper
-import net.grinder.scriptengine.groovy.junit.annotation.Repeat
-
-import static net.grinder.script.Grinder.grinder
-import static org.junit.Assert.*
-import static org.hamcrest.Matchers.*
-import net.grinder.plugin.http.HTTPRequest
-import net.grinder.plugin.http.HTTPPluginControl
-import net.grinder.script.GTest
-import net.grinder.script.Grinder
-import net.grinder.scriptengine.groovy.junit.GrinderRunner
-import net.grinder.scriptengine.groovy.junit.annotation.BeforeProcess
-import net.grinder.scriptengine.groovy.junit.annotation.BeforeThread
-// import static net.grinder.util.GrinderUtils.* // You can use this if you're using nGrinder after 3.2.3
-import org.junit.Before
-import org.junit.BeforeClass
-import org.junit.Test
-import org.junit.runner.RunWith
-import java.util.Date
-import java.util.List
-import java.util.ArrayList
 import HTTPClient.Cookie
 import HTTPClient.CookieModule
 import HTTPClient.HTTPResponse
 import HTTPClient.NVPair
+import groovy.json.JsonSlurper
+import net.grinder.plugin.http.HTTPPluginControl
+import net.grinder.plugin.http.HTTPRequest
+import net.grinder.script.GTest
+import net.grinder.scriptengine.groovy.junit.GrinderRunner
+import net.grinder.scriptengine.groovy.junit.annotation.BeforeProcess
+import net.grinder.scriptengine.groovy.junit.annotation.BeforeThread
+import net.grinder.scriptengine.groovy.junit.annotation.Repeat
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+
+import static net.grinder.script.Grinder.grinder
+import static org.hamcrest.Matchers.containsString
+import static org.hamcrest.Matchers.is
+
+// import static net.grinder.util.GrinderUtils.* // You can use this if you're using nGrinder after 3.2.3
+
+import static org.junit.Assert.assertThat
 
 
 /**
@@ -37,7 +35,7 @@ import HTTPClient.NVPair
 
 @Repeat(1)
 @RunWith(GrinderRunner)
-class TestRunnerDemo {
+class TestRunnerDemo1 {
 
     public static GTest test
     public static HTTPRequest request
@@ -51,6 +49,9 @@ class TestRunnerDemo {
     ]
     // 修改开头的成员变量
 
+    private String jsonresult
+
+
     @BeforeProcess
     public static void beforeProcess() {
         HTTPPluginControl.getConnectionDefaults().timeout = 6000
@@ -58,40 +59,41 @@ class TestRunnerDemo {
         request = new HTTPRequest()
         grinder.logger.info("before process.");
 
-        List<NVPair> headerList = new ArrayList<NVPair>()
-        headerList.add(new NVPair("Content-Type", "application/json"))
-        headers = headerList.toArray()
-        // 设置headers头
-        grinder.logger.info("############## 设置Headrs头: " + headers[0] + " ##############");
 
-        List<NVPair> paramsList = new ArrayList<NVPair>()
-        paramsList.add(new NVPair("age", "18"))
-        params = paramsList.toArray()
-
-        // nGrinder 不会自动解压，通常在 @beforeProcess 注解的方法里加上：
-        HTTPPluginControl.getConnectionDefaults().setUseContentEncoding(true)
-
-        // 然后在设 header 的地方加上：
-        headerList.add(new NVPair("Accept-Encoding", "gzip"))
 
     }
 
-    @BeforeThread
-    public void beforeThread() {
-        test.record(this, "test")
-        grinder.statistics.delayReports=true;
-        grinder.logger.info("before thread.");
-    }
-
-    @Before
-    public void before() {
-        request.setHeaders(headers)
-        cookies.each { CookieModule.addCookie(it, HTTPPluginControl.getThreadHTTPClientContext()) }
-        grinder.logger.info("before thread. init headers and cookies");
-    }
 
     @Test
-    public void test_get(){
+    public void test_1(){
+        HTTPResponse result = request.GET("http://192.168.1.232:8763/getcity", params)
+
+        grinder.logger.info("############## 返回结果: " + result.getText()+ " ##############");
+        grinder.logger.info("############## 返回状态码: " + result.getStatusCode()+ " ##############");
+
+        // 解析JSON
+        def jsonData = new JsonSlurper().parseText(result.text)
+        grinder.logger.info("############## 返回结果: " + jsonData + " ##############");
+        grinder.logger.info("############## 解析返回结果: " + jsonData.result + " ##############");
+
+        if (result.statusCode == 301 || result.statusCode == 302) {
+            grinder.logger.warn("Warning. The response may not be correct. The response code was {}.", result.statusCode);
+        } else {
+            assertThat(result.statusCode, is(200));
+            assertThat(result.text, containsString("result"));
+            jsonresult = jsonData.result
+            this.test_2()
+
+        }
+    }
+
+
+
+    public void test_2(){
+
+        NVPair[] params = [
+                new NVPair("name", jsonresult)
+        ]
         HTTPResponse result = request.GET("http://192.168.1.232:8763/getcity", params)
 
         grinder.logger.info("############## 返回结果: " + result.getText()+ " ##############");
@@ -111,31 +113,9 @@ class TestRunnerDemo {
     }
 
 
-    @Test
-    public void test_post(){
-        HTTPResponse result = request.POST("http://www.baidu.com", params)
-
-        if (result.statusCode == 301 || result.statusCode == 302) {
-            grinder.logger.warn("Warning. The response may not be correct. The response code was {}.", result.statusCode);
-        } else {
-            assertThat(result.statusCode, is(200));
-        }
-    }
 
 
-    @Test
-    public void test_post_json(){
 
-        def json = '{"userId": ["100180"]}';
-
-        HTTPResponse result = request.POST("http://www.baidu.com", json.getBytes())
-
-        if (result.statusCode == 301 || result.statusCode == 302) {
-            grinder.logger.warn("Warning. The response may not be correct. The response code was {}.", result.statusCode);
-        } else {
-            assertThat(result.statusCode, is(200));
-        }
-    }
 
 
 }
